@@ -1,54 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:football_shop/screens/product_form.dart';
+import 'package:football_shop/screens/product_list.dart';
+import 'package:football_shop/screens/login.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart'; 
+import 'package:provider/provider.dart'; 
 
 class ItemHomepage {
-  final String name; // Nama item
-  final IconData icon; // Ikon yang akan ditampilkan untuk item
-  final Color color;  // Warna latar belakang untuk kartu item
+  final String name;
+  final IconData icon;
+  final Color color;
 
-  // Constructor untuk menginisialisasi properti item
   ItemHomepage(this.name, this.icon, this.color);
 }
 
-// Widget custom (reusable) untuk tombol-tombol di grid
 class ItemCard extends StatelessWidget {
-  // Menerima satu objek ItemHomepage yang berisi data untuk kartu ini
   final ItemHomepage item;
 
   const ItemCard(this.item, {super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Material digunakan sebagai dasar kartu untuk mengatur warna dan bentuk
+    final request = context.watch<CookieRequest>();
+
     return Material(
-      // Mengambil warna dari data item yang diterima
       color: item.color,
-      // Membuat sudut kartu melengkung
       borderRadius: BorderRadius.circular(12),
-      // InkWell membuat kartu dapat ditekan dan memberi efek ripple
       child: InkWell(
-        // Aksi yang dijalankan saat kartu ditekan
-        onTap: () {
-          // Menampilkan SnackBar (notifikasi) di bagian bawah layar
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar() // Menyembunyikan SnackBar sebelumnya (jika ada)
-            ..showSnackBar(
-                SnackBar(content: Text("Kamu telah menekan tombol ${item.name}")));
+        onTap: () async {
+          if (item.name != "Logout") {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text("Kamu telah menekan tombol ${item.name}")));
+          }
+
           if (item.name == "Create Product") {
             Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const ProductFormPage()));
+              context,
+              MaterialPageRoute(builder: (context) => const ProductFormPage()));
+          } 
+          else if (item.name == "All Products") {
+            // Navigasi ke semua produk
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProductListPage(filterUser: false)));
+          }
+          else if (item.name == "My Products") {
+            // Navigasi ke produk saya (filterUser: true)
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProductListPage(filterUser: true)));
+          }
+          else if (item.name == "Logout") {
+            // Proses Logout
+            final response = await request.logout(
+                "http://localhost:8000/auth/logout/");
+            
+            String message = response["message"];
+            if (context.mounted) {
+              if (response['status']) {
+                String uname = response["username"];
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text("$message Sampai jumpa, $uname."),
+                ));
+                // Kembali ke halaman login dan hapus riwayat navigasi
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(message),
+                ));
+              }
+            }
           }
         },
-        // Container untuk mengatur padding dan konten di dalam kartu
         child: Container(
           padding: const EdgeInsets.all(8),
-          // Menengahkan konten di dalam Container
           child: Center(
-            // Menyusun Ikon dan Teks secara vertikal
             child: Column(
-              // Menengahkan Ikon dan Teks di tengah kartu
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
@@ -56,7 +87,7 @@ class ItemCard extends StatelessWidget {
                   color: Colors.white,
                   size: 30.0,
                 ),
-                const Padding(padding: EdgeInsets.all(3)), // Jarak kecil
+                const Padding(padding: EdgeInsets.all(3)),
                 Text(
                   item.name,
                   textAlign: TextAlign.center,

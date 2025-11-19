@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:football_shop/screens/menu.dart';
-import 'package:football_shop/screens/product_form.dart'; 
+import 'package:football_shop/screens/product_form.dart';
+import 'package:football_shop/screens/product_list.dart'; 
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -10,7 +11,6 @@ class LeftDrawer extends StatelessWidget {
     return Drawer(
       child: ListView(
         children: [
-          // Header Drawer
           const DrawerHeader(
             decoration: BoxDecoration(
               color: Colors.deepPurpleAccent,
@@ -40,11 +40,10 @@ class LeftDrawer extends StatelessWidget {
             ),
           ),
           
-          // Opsi Halaman Utama
+          // Halaman utama
           ListTile(
             leading: const Icon(Icons.home_outlined),
             title: const Text('Home'),
-            // Navigasi ke Halaman Utama
             onTap: () {
               Navigator.pushReplacement(
                   context,
@@ -54,13 +53,40 @@ class LeftDrawer extends StatelessWidget {
             },
           ),
 
-          // Opsi Tambah Produk
+          // All Products
+          ListTile(
+            leading: const Icon(Icons.shopping_bag),
+            title: const Text('All Products'),
+            onTap: () {
+              // Navigasi ke halaman list produk (filterUser: false)
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProductListPage(filterUser: false),
+                  ));
+            },
+          ),
+
+          // My Products
+          ListTile(
+            leading: const Icon(Icons.storefront),
+            title: const Text('My Products'),
+            onTap: () {
+              // Navigasi ke halaman list produk milik user (filterUser: true)
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProductListPage(filterUser: true),
+                  ));
+            },
+          ),
+
+          // Add Product
           ListTile(
             leading: const Icon(Icons.add_shopping_cart),
             title: const Text('Add Product'),
-            // Navigasi ke Halaman Form
             onTap: () {
-              Navigator.pushReplacement( 
+              Navigator.push( 
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ProductFormPage(),

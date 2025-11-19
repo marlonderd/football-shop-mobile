@@ -107,3 +107,67 @@ Tugas 8: Flutter Navigation, Layouts, Forms, and Input Elements
 4. Bagaimana kamu menyesuaikan warna tema agar aplikasi Football Shop memiliki identitas visual yang konsisten dengan brand toko?
     Jawaban:
     Penyesuaian warna tema dilakukan secara terpusat di satu tempat, yaitu di file main.dart di dalam widget MaterialApp. Kita menggunakan properti theme dan mengisinya dengan ThemeData(). Di dalam ThemeData, kita menentukan colorScheme. Widget Material Flutter (seperti AppBar, DrawerHeader, ElevatedButton) dirancang untuk secara otomatis mencari dan menggunakan warna dari colorScheme ini. AppBar di menu.dart secara otomatis berwarna ungu. Ini bukan karena kita mengaturnya secara manual di menu.dart (meskipun bisa), tetapi karena AppBar secara default mengambil warna colorScheme.primary dari ThemeData yang kita definisikan di main.dart. Ini memastikan setiap AppBar baru yang kita buat akan memiliki warna brand yang konsisten tanpa perlu menyalin kode warna berulang kali.
+
+Tugas 9: Integrasi Layanan Web Django dengan Aplikasi Flutter
+Mengapa Model Dart Diperlukan saat Mengambil/Mengirim Data JSON?
+Model Dart (seperti kelas Product) sangat diperlukan karena Dart adalah bahasa yang ketat terhadap tipe data. Dengan model, kita memastikan validasi tipe dan null-safety di sisi klien.
+
+Tanpa model, kita hanya bekerja dengan Map<String, dynamic>, yang rentan menyebabkan runtime errors jika terjadi ketidaksesuaian tipe data dari JSON (misalnya, Django mengirim "249000.00" yang seharusnya berupa int).
+
+Konsekuensinya: Kode sulit dipelihara (maintainability), karena kita harus melakukan casting dan null check manual yang berulang, dan perubahan kecil pada struktur JSON dari backend akan menyebabkan crash pada runtime.
+
+Fungsi Package http dan CookieRequest
+Package http: Berfungsi sebagai driver atau alat dasar untuk melakukan permintaan HTTP (GET, POST) secara stateless (tidak menyimpan sesi).
+
+CookieRequest (dari pbp_django_auth): Merupakan wrapper di atas http yang berfungsi secara stateful. Peran utamanya adalah secara otomatis menyimpan cookie sesi (sessionid) yang diterima dari Django setelah login dan melampirkannya pada setiap permintaan terautentikasi berikutnya.
+
+Alasan Instance CookieRequest Dibagikan ke Semua Komponen
+Instance CookieRequest perlu dibagikan ke seluruh komponen aplikasi Flutter (diatur pada main.dart menggunakan Provider) untuk memastikan session persistence.
+
+Sesi login harus diperoleh satu kali. Jika tidak dibagi, setiap halaman akan memiliki sesi berbeda, menyebabkan cookie sesi hilang saat navigasi. Hilangnya sesi membuat Django melihat user sebagai AnonymousUser, sehingga request untuk membuat produk gagal dengan error 500.
+
+Konfigurasi Konektivitas Flutter dan Django
+Konfigurasi ini diperlukan untuk mengatasi pembatasan jaringan dan keamanan yang ketat selama development dan deployment:
+
+10.0.2.2 di ALLOWED_HOSTS: Diperlukan karena di Android Emulator, localhost merujuk pada emulator itu sendiri. 10.0.2.2 adalah IP khusus untuk mengakses mesin host (tempat Django berjalan). Tanpa ini, koneksi dari emulator akan ditolak.
+
+CORS, CORS_ALLOW_CREDENTIALS, dan SameSite/Secure: Wajib karena Flutter berjalan di origin yang berbeda dari Django. Tanpa CORS yang diizinkan, request diblokir. Tanpa CORS_ALLOW_CREDENTIALS, cookie sesi tidak dikirimkan, menyebabkan kegagalan autentikasi permanen.
+
+Izin Akses Internet di Android: Aplikasi Android secara default tidak memiliki izin jaringan. Izin ini harus ditambahkan di AndroidManifest.xml agar koneksi HTTP dapat dilakukan.
+
+Mekanisme Pengiriman Data (Input hingga Tampilan)
+Input (Flutter): User mengisi data di ProductFormPage. Data divalidasi, lalu dienkode ke JSON string menggunakan jsonEncode().
+
+POST (Flutter ke Django): request.postJson() mengirim JSON ke endpoint /create-flutter/. Cookie sesi terlampir otomatis.
+
+Penyimpanan (Django): Django memverifikasi user, mengurai JSON (json.loads), membuat objek Product baru, dan menyimpannya ke database. Django merespons {"status": "success"}.
+
+Tampilan (Django ke Flutter): Halaman ProductListPage memanggil request.get('/json/'). Django mengambil data dari DB, men-serialisasinya menjadi JSON.
+
+Parsing & Render (Flutter): Product.fromJson mengurai JSON (dengan logika untuk mengatasi inkonsistensi tipe data harga/tanggal). Data kemudian ditampilkan di ListView.builder melalui widget ProductCard.
+
+Mekanisme Autentikasi (Login, Register, Logout)
+Register: Flutter mengirim kredensial ke /auth/register/ melalui request.postJson(). Django membuat akun baru.
+
+Login: Flutter mengirim kredensial ke /auth/login/ melalui request.login(). Django memverifikasi kredensial.
+
+Session Creation: Jika berhasil, Django membuat session ID dan mengirimkannya kembali melalui header Set-Cookie. CookieRequest Flutter menyimpan cookie ini.
+
+Autentikasi Berhasil: Flutter mendeteksi request.loggedIn dan menavigasi ke MyHomePage.
+
+Akses Sesi: Setiap request selanjutnya (misalnya, postJson saat create product) akan otomatis melampirkan cookie sesi ini di header, sehingga Django dapat mengenali user tersebut dan mengizinkan operasi terautentikasi (bukan AnonymousUser).
+
+Logout: request.logout() dipanggil ke /auth/logout/. Django menghapus sesi di server dan browser menghapus cookie, mengakhiri sesi.
+
+Implementasi Checklist Secara Step-by-Step
+Setup Dasar & Model: Mengkonfigurasi main.dart dengan Provider dan CookieRequest. Membuat Product Model Dart dengan penanganan null safety dan penyesuaian tipe data (int untuk harga, String untuk tanggal).
+
+Backend JSON & Auth: Membuat JSON Views (/auth/login/, /create-flutter/) di Django. Mengkonfigurasi settings.py untuk CORS, Session, dan Cookie yang ramah development.
+
+Implementasi Form & POST: Membuat ProductFormPage dengan state lokal dan implementasi request.postJson(). URL koneksi di backend dan frontend difiksasi agar konsisten menggunakan http://localhost:8000.
+
+Pengujian Otentikasi: Melakukan full cycle (Run, Login, Post) untuk memastikan AnonymousUser error hilang dan request terautentikasi.
+
+Data Retrieval: Membuat ProductListPage dan ProductCard dengan FutureBuilder untuk memanggil request.get('/json/').
+
+Debugging Tampilan: Mengatasi runtime errors pada Model Dart (harga dari String ke Int, tanggal dari String ke DateTime/String) agar data tampil, dan mengimplementasikan Proxy Image untuk mengatasi masalah CORS pada URL thumbnail.
